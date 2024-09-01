@@ -1,13 +1,16 @@
-import java.io.*;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class CsvGenerator {
-    
+
     private static final int NUMBER_OF_GAMES = 50;
     private static final int NUMBER_OF_GAMERS = 10;
     private static final int MAX_MOVES_PER_GAME = 10;
+    private static Map<Integer, Boolean> gameFinished = new HashMap<>();
+    private static Map<Integer, String> gameWinners = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
         List<String> gamesCsv = generateGames();
@@ -23,13 +26,11 @@ public class CsvGenerator {
 
     private static List<String> generateGames() {
         List<String> games = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
         for (int i = 1; i <= NUMBER_OF_GAMES; i++) {
             LocalDateTime date = LocalDateTime.now().minusDays(i);
-            String formattedDate = date.format(formatter);
             String sequence = generateRandomSequence();
-            boolean isFinished = i <= 40; 
-            games.add(i + "," + formattedDate + "," + sequence + "," + isFinished);
+            boolean isFinished = gameFinished.getOrDefault(i, false);
+            games.add(i + "," + date + "," + sequence + "," + isFinished);
         }
         return games;
     }
@@ -48,9 +49,12 @@ public class CsvGenerator {
         List<String> gameGamers = new ArrayList<>();
         Random rand = new Random();
         for (int i = 1; i <= NUMBER_OF_GAMES; i++) {
-            String username = "gamer" + (rand.nextInt(NUMBER_OF_GAMERS) + 1);
-            boolean isWinner = rand.nextBoolean() && (i <= 40);
-            gameGamers.add(i + "," + i + "," + username + "," + isWinner);
+            int numGamers = rand.nextInt(NUMBER_OF_GAMERS) + 1;
+            for (int j = 0; j < numGamers; j++) {
+                String username = "gamer" + (rand.nextInt(NUMBER_OF_GAMERS) + 1);
+                boolean isWinner = username.equals(gameWinners.get(i));
+                gameGamers.add(i + "," + i + "," + username + "," + isWinner);
+            }
         }
         return gameGamers;
     }
@@ -62,8 +66,13 @@ public class CsvGenerator {
             int numberOfMoves = rand.nextInt(MAX_MOVES_PER_GAME) + 1;
             for (int j = 1; j <= numberOfMoves; j++) {
                 String sequence = generateRandomSequence();
-                int bulls = rand.nextInt(5); 
+                int bulls = rand.nextInt(5);
                 int cows = rand.nextInt(5 - bulls);
+                boolean isWinningMove = bulls == 4;
+                if (isWinningMove) {
+                    gameFinished.put(i, true);
+                    gameWinners.put(i, "gamer" + (rand.nextInt(NUMBER_OF_GAMERS) + 1));
+                }
                 moves.add(j + "," + sequence + "," + bulls + "," + cows + "," + i);
             }
         }
@@ -79,10 +88,10 @@ public class CsvGenerator {
     }
 
     private static void writeToFile(String fileName, List<String> lines) throws IOException {
-        FileWriter writer = new FileWriter(fileName);
-        for (String line : lines) {
-            writer.write(line + "\n");
+        try (PrintWriter writer = new PrintWriter(fileName)) {
+            for (String line : lines) {
+                writer.println(line);
+            }
         }
-        writer.close();
     }
 }
